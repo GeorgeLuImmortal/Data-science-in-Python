@@ -1,0 +1,20 @@
+#Import the pacakge
+
+import urllib.request
+import json
+import pandas as pd
+
+#Download Json data from the specific link and add function to catch exception.
+
+link = "http://mlg.ucd.ie/datasets/comp41680/countries/15203181.json"
+try:
+    response = urllib.request.urlopen(link)
+    s = response.read().decode()
+except:
+    print("Failed to get data!!!!")
+    
+data = json.loads(s)
+
+countries = pd.DataFrame(data)
+
+countries.to_csv("countries-raw.csv",index = False)
