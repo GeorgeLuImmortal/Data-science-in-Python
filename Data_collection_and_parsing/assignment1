@@ -1,20 +1,57 @@
 #Import the pacakge
-
 import urllib.request
 import json
 import pandas as pd
 
 #Download Json data from the specific link and add function to catch exception.
-
 link = "http://mlg.ucd.ie/datasets/comp41680/countries/15203181.json"
 try:
     response = urllib.request.urlopen(link)
     s = response.read().decode()
 except:
     print("Failed to get data!!!!")
-    
+
+#Translate Json data to python List.
 data = json.loads(s)
 
+#Change the object data from List to DataFrame type.
 countries = pd.DataFrame(data)
 
+#Output the data as a comma-seperated file countries-raw.csv
 countries.to_csv("countries-raw.csv",index = False)
+
+#Load the new data from countries-raw.csv as a pandas data frame.
+raw_countries = pd.read_csv("countries-raw.csv")
+
+#Calculate summary statistics for the data frame.
+raw_countries.describe()
+
+'''Identify all features in the data which contain missing values. 
+
+We can find inflation_rate, life_expectancy and unemployment_rate has 1, 2 and 5 missing values respectively.'''
+raw_countries.isnull().sum()
+
+
+'''For each feature containing missing values, 
+replace the missing values with mean value for that feature. And we can find no value is null.'''
+
+mean_inflation_rate = raw_countries["inflation_rate"].mean()
+mean_life_expectancy = raw_countries["life_expectancy"].mean()
+mean_unemployment_rate = raw_countries["unemployment_rate"].mean()
+
+raw_countries["inflation_rate"] =raw_countries["inflation_rate"].fillna(mean_inflation_rate)
+raw_countries["life_expectancy"] =raw_countries["life_expectancy"].fillna(mean_life_expectancy)
+raw_countries["unemployment_rate"] =raw_countries["unemployment_rate"].fillna(mean_unemployment_rate)
+
+raw_countries.isnull().sum()
+
+'''Show the data again. According to the table, we can find country and continent is categorical value, 
+but only continent feature can be aggregated to get a higher level.'''
+raw_countries
+
+#Group data by continent so it can get a higher level and make a summary.
+group = raw_countries.groupby("continent")
+group.describe()
+
+#Write out the final data frame as a comma-separated CSV file countries-clean.csv.
+group.describe().to_csv("countries-clean.csv")
