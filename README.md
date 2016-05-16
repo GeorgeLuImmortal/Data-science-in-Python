@@ -1,2 +1,2 @@
 # Data-science-in-Python
-This is the code based on assignments in Python course in UCD.
+This is the base python code in data science including data collection, visualisation,text analytics etc.
