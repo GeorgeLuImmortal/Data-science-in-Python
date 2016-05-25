@@ -1,0 +1,216 @@
+import csv
+import tweepy
+import matplotlib
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+
+
+
+#Set cusumer_key,cusumer_secret,access_token,token_secret and invoke the API. You can get those from twitter
+
+#set your own key here
+consumer_key='7kgMozaX7lAvZiqFCUHnjmstJ' 
+consumer_secret='phkhiAzyVMctR4MjFxfYgu0953EvbpTlpxdyFuznQJLO98G28c'
+access_token ='3577184776-zD6ecZZlD7eY1MyemeaN9r3y0PuPvp9mHO0og6w'
+access_token_secret ='CuaoMdSDfuEKpqWJ8CSqiFmRlC8DHUaPrIVErp5kFRjCb'
+
+#get the authorization 
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth) 
+
+
+'''In this part, I Invoke the API to get the data from twitter, this data is including recent English 
+twitters which mentioned "deep learning" or "alphago". I parse 4 attrbutes: author, create time, text,ID and 
+store them in CSV files. Cause the API limit, you can only get part of all recent data at one time, so I did 
+several times to parse the data. As time changed, the data you get by this code should be different from mine. 
+So you don't need to get data again just use data I provided in the zip file to do the test. I comment the repeat parts, 
+if you want to run these codes, you can uncommment them.In this part, I Invoke the API to get the data from twitter, 
+this data is including recent English twitters which mentioned "deep learning" or "alphago". I parse 4 attrbutes: 
+author, create time, text,ID and store them in CSV files. Cause the API limit, you can only get part of all recent 
+data at one time, so I did several times to parse the data. As time changed, the data you get by this code should be 
+different from mine. So you don't need to get data again just use data I provided in the zip file to do the test. 
+I comment the repeat parts, if you want to run these codes, you can uncommment them.'''
+
+#Open/Create a file to append data
+csvFile = open('alphago2.csv', 'a')
+#Use csv Writer
+csvWriter = csv.writer(csvFile)
+
+for tweet in tweepy.Cursor(api.search, 
+                    q="alphago", 
+                    lang="en").items():
+#Write a row to the csv file/ I use encode utf-8
+    csvWriter.writerow([tweet.id,tweet.author.screen_name.encode('utf-8'),
+                        tweet.created_at, tweet.text.encode('utf-8')])
+csvFile.close()
+
+'''In this part I load data from CSV file and do some manipulation to the data to get the final
+datasets which used for analysis. First I load data and combine them.'''
+
+#set the header for the data
+header_row=['ID','author','time','text']
+ag = pd.read_csv("alphago1.csv", skiprows=[0,1,2,3], names=header_row)
+dl1 = pd.read_csv("deeplearning1.csv", skiprows=[0,1,2,3], names=header_row)
+dl2 = pd.read_csv("deeplearning2.csv", skiprows=[0,1,2,3], names=header_row)
+dl3 = pd.read_csv("deeplearning3.csv", skiprows=[0,1,2,3], names=header_row)
+dl4 = pd.read_csv("deeplearning4.csv", skiprows=[0,1,2,3], names=header_row)
+dl5 = pd.read_csv("deeplearning5.csv", skiprows=[0,1,2,3], names=header_row)
+
+#the data of deeplearning should be appended into one dataset
+dl=dl1.append(dl2).append(dl3).append(dl4).append(dl5)
+
+#copy the datasets for different visualizations and summarizations
+ag1=ag.copy()
+dl1=dl.copy()
+
+#Secondly, I add a tag to both dataset to distinguish them. Cause ID column does no contribute to our analysis, so I remove it.
+
+#add tag to datasets
+ag1['Alphago']=1
+dl1['DeepLearning']=1
+
+ag['tag']='Alphago'
+dl['tag']='DeepLearning'
+
+#delete ID column
+del ag['ID']
+del dl['ID']
+del ag1['ID']
+del dl1['ID']
+
+#Clean the data, remove some useless characters from data, such as "b'" in datasets.
+#select string from a centain range to remove the useless characters
+ag['author'] = ag['author'].map(lambda x: str(x)[2:-1])
+ag['text'] = ag['text'].map(lambda x: str(x)[2:-1])
+
+dl['author'] = dl['author'].map(lambda x: str(x)[2:-1])
+dl['text'] = dl['text'].map(lambda x: str(x)[2:-1])
+
+ag1['author'] = ag1['author'].map(lambda x: str(x)[2:-1])
+ag1['text'] = ag1['text'].map(lambda x: str(x)[2:-1])
+
+dl1['author'] = dl1['author'].map(lambda x: str(x)[2:-1])
+dl1['text'] = dl1['text'].map(lambda x: str(x)[2:-1])
+
+#Improve data by add a column 'data', so that we could abstract data in a higher hierarchy.
+
+#function to create a new column based on value of old column
+def f(row):
+    if row['time'][0:4] == '4/10':
+        val = '04/10'
+    elif row['time'][0:4] == '4/7':
+        val = '04/07'
+    elif row['time'][0:4] == '4/8/':
+        val = '04/08'
+    elif row['time'][0:4] == '4/9/':
+        val = '04/09'
+    else:
+        val = '04/06'
+    return val
+
+#add column "date"
+ag['date']=ag.apply(f,axis=1)
+dl['date']=dl.apply(f,axis=1)
+
+ag1['date']=ag1.apply(f,axis=1)
+dl1['date']=dl1.apply(f,axis=1)
+
+#combine two datasets together
+result=ag.append(dl)
+result1=ag1.append(dl1)
+
+#Check whether it has some empty data.
+ag.isnull().sum()
+dl.isnull().sum()
+result.isnull().sum()
+result1.isnull().sum()
+
+#Fill the dataset and output the clean data to CSV files.
+#fill the blank
+result2=result1.fillna(0)
+
+#output the data to csv file
+ag.to_csv("alphago_clean.csv")
+dl.to_csv("deeplearning_clean.csv")
+result2.to_csv("clean_data.csv")
+
+#Do some describe and summarization
+#abstract the data by "tag"
+grouprs=result.groupby("tag")
+grouprs.describe()
+
+#abstract data by "date"
+grouprs1=result.groupby("date")
+grouprs1.describe()
+
+#abstract data by both "date" and "tag"
+grouprs2=result.groupby(['date','tag'])
+grouprs2.describe()
+
+#In this part I will do some visualizations to explore the data. First we are looking the number of two topic's tweets.
+
+#visualize the number by bar chart
+number = result['tag'].value_counts()
+plt.xlabel("Category")
+plt.ylabel("Number")
+plt.title('Total Number of Tweets about Alphago and DeepLearning', fontsize=13, fontweight='bold')
+p=number.plot(kind="bar")
+
+#save as png
+fig = p.get_figure()
+fig.savefig("tweets_bars.png")
+
+#We can find tweets about Deep Learning is much more than Alphago's. Then can also use pie chart to see which date has the most tweets.
+
+#visualize the number by bar chart
+number = result['date'].value_counts()
+plt.title('Total Number of Tweets about Alphago and DeepLearning', fontsize=13, fontweight='bold')
+p=number.plot(kind="pie",legend='best',autopct='%.2f%%')
+
+#save as png
+fig = p.get_figure()
+fig.savefig("tweets_pies.png")
+
+'''We could find out that 06/04 has the largest tweets post. However, the number can't tell anything, we should look the change of number of twitters about two topics by time series. 
+We should use line chart to reflect the trends of tweets post.'''
+
+#set the "time" column as index
+result1['time']=pd.to_datetime(pd.Series(result1['time']))
+result1.index = result1['time']
+
+#reassemble the data as time series, interval is 1 hour
+time = pd.DataFrame(result1.resample('1h', how='count'))
+
+#visual the data as line chart to see the change of two topic's twitters
+plt.ylabel('twitters number')
+plt.title('Time Series of Number of Tweets about Alphago and DeepLearning', fontsize=13, fontweight='bold')
+p=time.Alphago.plot(color='g')
+p=time.DeepLearning.plot(color='b')
+plt.legend(loc='best')
+
+#save as png
+fig = p.get_figure()
+fig.savefig("tweets_trend.png")
+
+#Because the tweets about Deep Learning is much more than Alphago, we can't see the trends of alphago clearly. So we should do some normalization here.
+
+#normalize the data by value/sum
+time['Alphago']=time['Alphago']/time['Alphago'].sum()
+time['DeepLearning']=time['DeepLearning']/time['DeepLearning'].sum()
+
+#visualize again
+plt.ylabel('twitters number(normalization)')
+plt.title('Time Series of Number of Tweets about Alphago and DeepLearning', fontsize=13, fontweight='bold')
+p=time.Alphago.plot(color='g')
+p=time.DeepLearning.plot(color='b')
+plt.legend(loc='best')
+
+#save as png
+fig = p.get_figure()
+fig.savefig("tweets_trend_normalization.png")
+
+'''Now, the tendency is clear, we can find out the post number of Deep Learning and Alphago has dramatical synchronization, namely, though has a little lag, when line of DeepLearning climbs to peaks, so does Alphago and when line of DeepLearning goes down, the same situation will happen in line of Alphago.
+It may reflect there are some postive corelaiton in two datasets, it means a tweet about DeepLearning has a high possibility to mention Alphago too.'''
